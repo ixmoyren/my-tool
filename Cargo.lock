@@ -3,5 +3,13 @@
 version = 4
 
 [[package]]
-name = "ncm-tool"
+name = "ncmapi"
+version = "0.1.0"
+
+[[package]]
+name = "ncmcli"
+version = "0.1.0"
+
+[[package]]
+name = "ncmdump"
 version = "0.1.0"
