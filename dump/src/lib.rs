@@ -1,14 +1,27 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+use snafu::Snafu;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+mod decode;
+mod decrypt;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+type Result<T, E = Error> = std::result::Result<T, E>;
+
+#[derive(Debug, Snafu)]
+#[snafu(visibility(pub(crate)))]
+pub enum Error {
+    #[snafu(display("Failed to obtain the metadata of the ncmfile"))]
+    GetNcmFileMetadata { source: ncmformat::Error },
+    #[snafu(display("Not a valid NCM file (bad magic)"))]
+    InvalidMagic,
+    #[snafu(display("Decryption failed, {message}"))]
+    Aes128EcbDecryptUnpad { message: String },
+    #[snafu(display("Decode failed, {message}"))]
+    Base64Decode {
+        message: String,
+        source: base64::DecodeError,
+    },
+    #[snafu(display("{message}"))]
+    IoOperation {
+        message: String,
+        source: std::io::Error,
+    },
 }
