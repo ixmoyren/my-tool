@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-ncmformat = { workspace = true }
+ncmformat = { version = "0.1.0", path = "../ncm" }
 snafu = { workspace = true }
 aes = "0.8"
 base64 = "0.22.1"
