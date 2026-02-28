@@ -7,8 +7,8 @@ license.workspace = true
 [dependencies]
 ncmformat = { version = "0.1.0", path = "../ncm" }
 snafu = { workspace = true }
-aes = "0.8"
-base64 = "0.22.1"
+aes = { workspace = true }
+base64 = { workspace = true }
 cipher = { version = "0.4", features = ["block-padding", "alloc"] }
 lofty = "0.23.2"
 log = "0.4.29"
