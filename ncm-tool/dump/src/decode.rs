@@ -1,13 +1,15 @@
 use crate::{
     Base64DecodeSnafu, GetNcmFileMetadataSnafu, InvalidMagicSnafu, IoOperationSnafu, Result,
-    decrypt::{rc4_ksa, rc4_stream_byte},
+    decrypt::{rc4_ksa_mut, rc4_stream_byte},
 };
 use aes::Aes128Dec;
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use cipher::{BlockDecryptMut, KeyInit, block_padding::Pkcs7, generic_array::GenericArray};
-use ncmformat::{AudioFormat, NcmFile, NcmMetadata};
+use ncmformat::{
+    AudioFormat, DEFAULT_CORE_KEY, DEFAULT_MAGIC, DEFAULT_MODIFY_KEY, NcmFile, NcmMetadata,
+};
 use snafu::{ResultExt, ensure};
-use std::io::{Read, Seek, SeekFrom, Write};
+use std::io::{Read, Seek, SeekFrom};
 
 macro_rules! get_len {
     ($ref:expr, [$init:expr; $len:expr], $len_msg:literal) => {{
@@ -51,27 +53,11 @@ macro_rules! aes_128_ecb_decrypt {
     }};
 }
 
-pub fn decode_with_magic_key<R>(
-    reader: &mut R,
-    magic: [u8; 8],
-    core_key: [u8; 16],
-    modify_key: [u8; 16],
-) -> Result<NcmFile>
-where
-    R: Read + Seek,
-{
-    let ncm_file = NcmFile::default()
-        .with_magic(magic)
-        .with_core_key(core_key)
-        .with_modify_key(modify_key);
-    decode_ncm_file(reader, ncm_file)
-}
-
 pub fn decode<R>(reader: &mut R) -> Result<NcmFile>
 where
     R: Read + Seek,
 {
-    let ncm_file = NcmFile::default().with_default_key().with_default_magic();
+    let ncm_file = NcmFile::default();
     decode_ncm_file(reader, ncm_file)
 }
 
@@ -83,7 +69,7 @@ where
     reader.read_exact(&mut magic).context(IoOperationSnafu {
         message: "Couldn't read magic".to_owned(),
     })?;
-    ensure!(magic == ncm_file.magic, InvalidMagicSnafu);
+    ensure!(magic == DEFAULT_MAGIC, InvalidMagicSnafu);
 
     reader
         .seek(SeekFrom::Current(2))
@@ -101,8 +87,8 @@ where
         *byte ^= 0x64;
     }
     let key_decrypted =
-        aes_128_ecb_decrypt!(ncm_file.core_key, key_data, "Couldn't decrypt the key");
-    ncm_file.key_box = rc4_ksa(&key_decrypted[17..]);
+        aes_128_ecb_decrypt!(DEFAULT_CORE_KEY, key_data, "Couldn't decrypt the key");
+    rc4_ksa_mut(&mut ncm_file.key_box, &key_decrypted[17..]);
 
     let meta_len = get_len!(reader, [0_u8; 4], "Couldn't read metadata len");
     if meta_len > 0 {
@@ -111,7 +97,7 @@ where
             message: "Couldn't decode metadata",
         })?;
         let meta_decrypted = aes_128_ecb_decrypt!(
-            ncm_file.modify_key,
+            DEFAULT_MODIFY_KEY,
             meta_data,
             "Couldn't decrypt the metadata"
         );
@@ -163,45 +149,4 @@ where
     };
 
     Ok(ncm_file)
-}
-
-trait DumpAudio {
-    fn dump_audio<R, W>(&self, r: &mut R, w: &mut W) -> Result<()>
-    where
-        R: Read + Seek,
-        W: Write;
-}
-
-impl DumpAudio for NcmFile {
-    fn dump_audio<R, W>(&self, r: &mut R, w: &mut W) -> Result<()>
-    where
-        R: Read + Seek,
-        W: Write,
-    {
-        r.seek(SeekFrom::Start(self.audio_offset))
-            .context(IoOperationSnafu {
-                message: "Failed to seek audio".to_owned(),
-            })?;
-
-        let mut buf = vec![0u8; 0x8000];
-        let mut offset = 0usize;
-
-        loop {
-            let n = r.read(&mut buf).context(IoOperationSnafu {
-                message: "Couldn't read the audio data to buf",
-            })?;
-            if n == 0 {
-                break;
-            }
-            for (i, byte) in buf[..n].iter_mut().enumerate() {
-                *byte ^= rc4_stream_byte(&self.key_box, offset + i);
-            }
-            w.write_all(&buf[..n]).context(IoOperationSnafu {
-                message: "Couldn't write the audio data",
-            })?;
-            offset += n;
-        }
-
-        Ok(())
-    }
 }

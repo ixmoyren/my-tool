@@ -2,6 +2,8 @@ use snafu::Snafu;
 
 mod decode;
 mod decrypt;
+mod dump;
+mod util;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -19,6 +21,13 @@ pub enum Error {
         message: String,
         source: base64::DecodeError,
     },
+    #[snafu(display("{message}, in the lofty probe"))]
+    Lofty {
+        message: String,
+        source: lofty::error::LoftyError,
+    },
+    #[snafu(display("{message}, in the lofty probe"))]
+    LoftyNoSupport { message: String },
     #[snafu(display("{message}"))]
     IoOperation {
         message: String,

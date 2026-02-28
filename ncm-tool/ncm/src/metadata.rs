@@ -46,12 +46,16 @@ impl Metadata {
 
     /// Join artist names with " / ".
     pub fn artist_names(&self) -> String {
-        self.artist
-            .iter()
-            .filter_map(|a| a.first().to_owned())
-            .map(String::to_string)
-            .collect::<Vec<_>>()
-            .join(" / ")
+        if self.artist.is_empty() {
+            "".to_owned()
+        } else {
+            self.artist
+                .iter()
+                .filter_map(|a| a.first().to_owned())
+                .map(String::to_string)
+                .collect::<Vec<_>>()
+                .join(" / ")
+        }
     }
 }
 

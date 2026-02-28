@@ -6,7 +6,7 @@ mod ncmfile;
 
 pub use audioformat::AudioFormat;
 pub use metadata::Metadata as NcmMetadata;
-pub use ncmfile::NcmFile;
+pub use ncmfile::{DEFAULT_CORE_KEY, DEFAULT_MAGIC, DEFAULT_MODIFY_KEY, NcmFile};
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 

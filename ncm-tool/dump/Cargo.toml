@@ -10,3 +10,6 @@ snafu = { workspace = true }
 aes = "0.8"
 base64 = "0.22.1"
 cipher = { version = "0.4", features = ["block-padding", "alloc"] }
+lofty = "0.23.2"
+log = "0.4.29"
+walkdir = "2.5.0"
