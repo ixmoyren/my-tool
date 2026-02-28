@@ -9,7 +9,7 @@ aes = { workspace = true }
 base64 = { workspace = true }
 num-bigint = "0.4"
 rand = "0.9"
-reqwest = { version = "0.13", features = ["blocking", "json", "socks"] }
+reqwest = { workspace = true }
 snafu = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

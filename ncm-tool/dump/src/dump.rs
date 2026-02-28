@@ -1,4 +1,7 @@
-use crate::{Error::LoftyNoSupport, IoOperationSnafu, LoftySnafu, decrypt::rc4_stream_byte};
+use crate::{
+    Error::LoftyNoSupport, IoOperationSnafu, LoftySnafu, RequestOperationSnafu,
+    decrypt::rc4_stream_byte,
+};
 use lofty::{
     config::WriteOptions,
     file::TaggedFileExt,
@@ -8,6 +11,7 @@ use lofty::{
     tag::Tag,
 };
 use ncmformat::{NcmFile, NcmMetadata};
+use reqwest::blocking::Client;
 use snafu::ResultExt;
 use std::{
     io::{Read, Seek, SeekFrom, Write},
@@ -15,6 +19,8 @@ use std::{
 };
 
 const PNG_MAGIC: [u8; 8] = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) \
+    AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
 pub trait DumpAudio {
     fn dump_audio<R, W>(&self, r: &mut R, w: &mut W) -> crate::Result<()>
@@ -93,18 +99,42 @@ impl DumpAudio for NcmFile {
         tag.set_artist(artist);
         tag.set_album(album);
 
-        if let Some(img_data) = self.cover_image {
-            let mime = if img_data.starts_with(&PNG_MAGIC) {
-                MimeType::Png
-            } else {
-                MimeType::Jpeg
-            };
-            let pic = Picture::unchecked(img_data.to_vec())
-                .pic_type(PictureType::CoverFront)
-                .mime_type(mime)
-                .build();
-            tag.push_picture(pic);
-        } // Todo 音乐图片可以通过网络下载
+        let img_data = if let Some(img_data) = self.cover_image {
+            img_data
+        } else {
+            let client = Client::builder()
+                .user_agent(USER_AGENT)
+                .timeout(std::time::Duration::from_secs(30))
+                .build()
+                .context(RequestOperationSnafu {
+                    message: "Failed to create the reqwest client".to_owned(),
+                })?;
+            let resp = client
+                .get(&metadata.album_pic)
+                .send()
+                .context(RequestOperationSnafu {
+                    message: format!(
+                        "Failed to send request to ({}) when downloading album picture",
+                        &metadata.album_pic
+                    ),
+                })?;
+            let bytes = resp.bytes().context(RequestOperationSnafu {
+                message: "Failed to read the bytes from response when downloading album picture"
+                    .to_owned(),
+            })?;
+            bytes.to_vec()
+        };
+
+        let mime = if img_data.starts_with(&PNG_MAGIC) {
+            MimeType::Png
+        } else {
+            MimeType::Jpeg
+        };
+        let pic = Picture::unchecked(img_data.to_vec())
+            .pic_type(PictureType::CoverFront)
+            .mime_type(mime)
+            .build();
+        tag.push_picture(pic);
         tag.save_to_path(path, WriteOptions::default())
             .context(LoftySnafu {
                 message: format!("Failed to save tag to file({})", path.display()),

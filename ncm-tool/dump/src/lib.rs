@@ -33,4 +33,9 @@ pub enum Error {
         message: String,
         source: std::io::Error,
     },
+    #[snafu(display("{message}"))]
+    RequestOperation {
+        message: String,
+        source: reqwest::Error,
+    },
 }

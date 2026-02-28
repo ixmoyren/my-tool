@@ -839,6 +839,7 @@ dependencies = [
     "lofty",
     "log",
     "ncmformat",
+    "reqwest",
     "snafu",
     "walkdir",
 ]

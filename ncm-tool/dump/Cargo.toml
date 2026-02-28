@@ -12,4 +12,5 @@ base64 = { workspace = true }
 cipher = { version = "0.4", features = ["block-padding", "alloc"] }
 lofty = "0.23.2"
 log = "0.4.29"
+reqwest = { workspace = true }
 walkdir = "2.5.0"

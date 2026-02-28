@@ -56,10 +56,10 @@ impl Client {
         );
 
         let resp = req.body(body).send().context(RequestOperationSnafu {
-            message: format!("Failed to send request to ({})", url.to_string()),
+            message: format!("Failed to send request to ({url})"),
         })?;
         let json: Value = resp.json().context(RequestOperationSnafu {
-            message: format!("Failed to read from response ({})", url.to_string()),
+            message: format!("Failed to read from response ({url})"),
         })?;
 
         if let Some(code) = json.get("code").and_then(Value::as_i64)
