@@ -1,9 +1,9 @@
 use snafu::Snafu;
 
-mod decode;
+pub mod decode;
 mod decrypt;
-mod dump;
-mod util;
+pub mod dump;
+pub mod util;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 

@@ -11,6 +11,6 @@ aes = { workspace = true }
 base64 = { workspace = true }
 cipher = { version = "0.4", features = ["block-padding", "alloc"] }
 lofty = "0.23.2"
-log = "0.4.29"
+log = { workspace = true }
 reqwest = { workspace = true }
-walkdir = "2.5.0"
+walkdir = { workspace = true }

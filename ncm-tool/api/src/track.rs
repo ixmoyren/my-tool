@@ -156,7 +156,7 @@ fn parse_track(v: &Value) -> Track {
         name: v["name"].as_str().unwrap_or("").to_owned(),
         artists,
         album,
-        duration_ms: v["dt"]
+        duration: v["dt"]
             .as_u64()
             .or_else(|| v["duration"].as_u64())
             .unwrap_or(0),

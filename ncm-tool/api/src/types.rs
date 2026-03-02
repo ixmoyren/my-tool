@@ -53,7 +53,7 @@ pub struct Track {
     /// Album this track belongs to.
     pub album: Album,
     /// Duration in milliseconds.
-    pub duration_ms: u64,
+    pub duration: u64,
 }
 
 /// A playlist (song list).

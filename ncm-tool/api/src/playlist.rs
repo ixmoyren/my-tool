@@ -94,7 +94,7 @@ fn parse_track(v: &Value) -> Track {
             name: al["name"].as_str().unwrap_or("").to_owned(),
             pic_url: al["picUrl"].as_str().map(String::from),
         },
-        duration_ms: v["dt"]
+        duration: v["dt"]
             .as_u64()
             .or_else(|| v["duration"].as_u64())
             .unwrap_or(0),

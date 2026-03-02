@@ -5,3 +5,10 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+clap = { version = "4.5", features = ["derive"] }
+env_logger = "0.11.9"
+log = { workspace = true }
+ncmapi = { version = "0.1.0", path = "../api" }
+ncmdump = { version = "0.1.0", path = "../dump" }
+snafu = { workspace = true }
+walkdir = { workspace = true }

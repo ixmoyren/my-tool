@@ -1,13 +1,13 @@
 use snafu::Snafu;
 
-mod auth;
-mod client;
+pub mod auth;
+pub mod client;
 mod crypto;
-mod playlist;
-mod search;
-mod track;
-mod types;
-mod user;
+pub mod playlist;
+pub mod search;
+pub mod track;
+pub mod types;
+pub mod user;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
