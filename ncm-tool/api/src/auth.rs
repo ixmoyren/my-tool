@@ -33,7 +33,8 @@ impl Session {
         let data = serde_json::to_string_pretty(self).context(SerdeJsonOperationSnafu {
             message: "Failed to serialize the session object into json".to_owned(),
         })?;
-        fs::write(&path, data).context(IoOperationSnafu {
+        let session_json = path.join("session.json");
+        fs::write(&session_json, data).context(IoOperationSnafu {
             message: "The json cannot be written to session.json".to_owned(),
         })?;
         Ok(())
