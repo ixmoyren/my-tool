@@ -180,21 +180,14 @@ fn cmd_dump(
     remove: bool,
 ) -> Result<(), Whatever> {
     if let Some(dir) = directory {
-        if recursive {
-            for entry in WalkDir::new(dir).into_iter().filter_map(Result::ok) {
-                if entry.path().extension().is_some_and(|e| e == "ncm") {
-                    files.push(entry.into_path());
-                }
-            }
+        let walk_dir = if recursive {
+            WalkDir::new(dir)
         } else {
-            while let Some(Ok(entry)) = std::fs::read_dir(&dir)
-                .with_whatever_context(|_| "Failed to read directory")?
-                .next()
-            {
-                let path = entry.path();
-                if path.extension().is_some_and(|e| e == "ncm") {
-                    files.push(path);
-                }
+            WalkDir::new(dir).max_depth(1)
+        };
+        for entry in walk_dir.into_iter().filter_map(Result::ok) {
+            if entry.path().extension().is_some_and(|e| e == "ncm") {
+                files.push(entry.into_path());
             }
         }
     }
