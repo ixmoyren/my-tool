@@ -92,7 +92,10 @@ where
 
     let meta_len = get_len!(reader, [0_u8; 4], "Couldn't read metadata len");
     if meta_len > 0 {
-        let meta_data = get_data!(reader, meta_len, "Couldn't read meta data");
+        let mut meta_data = get_data!(reader, meta_len, "Couldn't read meta data");
+        for byte in &mut meta_data {
+            *byte ^= 0x63;
+        }
         let meta_data = BASE64.decode(&meta_data[22..]).context(Base64DecodeSnafu {
             message: "Couldn't decode metadata",
         })?;

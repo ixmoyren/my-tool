@@ -2,13 +2,17 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand, ValueEnum};
 use env_logger::{Builder, Target};
-use log::{error, info};
+use log::{error, info, warn};
 use ncmdump::util::convert;
 use snafu::{ErrorCompat, OptionExt, ResultExt, Whatever, whatever};
 use walkdir::WalkDir;
 
 #[derive(Parser)]
-#[command(name = "ncmtool", version, about = "NCM decryptor & Netease Music CLI")]
+#[command(
+    name = "ncmtool",
+    version,
+    about = "NCM decryptor & Netease Cloud Music CLI"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -163,7 +167,7 @@ fn main() {
     if let Err(error) = result {
         error!("{error}");
         if let Some(bt) = ErrorCompat::backtrace(&error) {
-            eprintln!("{bt}");
+            error!("{bt}");
         }
     }
 }
@@ -206,10 +210,18 @@ fn cmd_dump(
             Ok(out) => {
                 info!("{} -> {}", file.display(), out.display());
                 if remove && let Err(e) = std::fs::remove_file(file) {
-                    error!("warning: failed to remove {}: {e}", file.display());
+                    warn!(
+                        "Failed to remove {} while dumping successfully: {e}",
+                        file.display()
+                    );
                 }
             }
-            Err(e) => error!("error: {}: {e}", file.display()),
+            Err(e) => {
+                error!("Couldn't dump file({}): {e}", file.display());
+                if let Some(bt) = ErrorCompat::backtrace(&e) {
+                    error!("{bt}");
+                }
+            }
         }
     }
     Ok(())
