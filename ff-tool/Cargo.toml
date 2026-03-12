@@ -1,14 +1,18 @@
 [package]
-name = "ncmcli"
+name = "ff-tool"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+
+[[bin]]
+name = "ff-tool"
+path = "main.rs"
 
 [dependencies]
 clap = { workspace = true }
 env_logger = { workspace = true }
 log = { workspace = true }
-ncmapi = { version = "0.1.0", path = "../api" }
-ncmdump = { version = "0.1.0", path = "../dump" }
+reqwest = { workspace = true }
+tar = "0.4"
+lzma-rust2 = "0.16.2"
 snafu = { workspace = true }
-walkdir = { workspace = true }

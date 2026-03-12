@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["ncm-tool/*"]
+members = ["ff-tool", "ncm-tool/*"]
 
 [workspace.package]
 version = "0.1.0"
@@ -8,6 +8,8 @@ edition = "2024"
 license = "Apache-2.0 OR MIT"
 
 [workspace.dependencies]
+clap = { version = "4.5", features = ["derive"] }
+env_logger = "0.11.9"
 log = "0.4.29"
 snafu = "0.9.0"
 serde = { version = "1.0.228", features = ["derive"] }
