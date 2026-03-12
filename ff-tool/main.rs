@@ -1,11 +1,24 @@
 use clap::{Parser, ValueEnum};
 use env_logger::{Builder, Target};
-use log::error;
 use lzma_rust2::XzReader;
 use reqwest::blocking::Client;
-use snafu::{ErrorCompat, ResultExt, Whatever, ensure_whatever};
-use std::{fs, path::PathBuf};
+use snafu::{ResultExt, Whatever, ensure_whatever};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 use tar::Archive;
+
+macro_rules! print_then_return {
+    ($error: expr) => {{
+        let err = $error;
+        ::log::error!("{err}");
+        if let Some(bt) = ::snafu::ErrorCompat::backtrace(&err) {
+            ::log::error!("{bt}");
+        }
+        return;
+    }};
+}
 
 #[derive(Parser)]
 #[command(
@@ -20,6 +33,8 @@ struct Cli {
     install: PathBuf,
     #[arg(short, long, default_value_t = false)]
     backup: bool,
+    #[arg(long, default_value_t = false)]
+    clean_backup: bool,
 }
 
 #[derive(Copy, Clone, PartialEq, Default, ValueEnum)]
@@ -65,62 +80,75 @@ fn main() {
         browser_type: browser,
         install,
         backup: is_backup,
+        clean_backup: is_clean_backup,
     } = Cli::parse();
 
-    let result = if is_backup {
-        backup(browser, install)
-    } else {
-        update(browser, install)
+    let (install, back) = match get_install_back(&browser, install) {
+        Ok(t) => t,
+        Err(error) => print_then_return!(error),
     };
 
-    if let Err(error) = result {
-        error!("{error}");
-        if let Some(bt) = ErrorCompat::backtrace(&error) {
-            error!("{bt}");
+    if is_clean_backup {
+        if let Err(error) = clean_backup(&back) {
+            print_then_return!(error);
+        }
+    } else {
+        if let Err(error) = if is_backup {
+            backup(&install, &back)
+        } else {
+            update(&browser, &install, &back)
+        } {
+            print_then_return!(error);
         }
     }
 }
 
-fn backup(browser: BrowserType, install: PathBuf) -> Result<(), Whatever> {
-    let (install, back) = get_install_back(browser, install)?;
-    if install.exists() && back.exists() {
-        fs::remove_dir_all(&install).with_whatever_context(|_| {
+fn clean_backup(back: &Path) -> Result<(), Whatever> {
+    if back.exists() {
+        fs::remove_dir_all(back).with_whatever_context(|_| {
             format!("Couldn't remove the backup dir({})", back.display())
         })?;
-        fs::rename(&back, &install).with_whatever_context(|_| {
+    }
+    Ok(())
+}
+
+fn backup(install: &Path, back: &Path) -> Result<(), Whatever> {
+    if install.exists() && back.exists() {
+        fs::remove_dir_all(install).with_whatever_context(|_| {
+            format!("Couldn't remove the backup dir({})", back.display())
+        })?;
+        fs::rename(back, install).with_whatever_context(|_| {
             format!("Couldn't backup the install dir({})", install.display())
         })?;
     } else if !install.exists() && back.exists() {
-        fs::rename(&back, &install).with_whatever_context(|_| {
+        fs::rename(back, install).with_whatever_context(|_| {
             format!("Couldn't backup the install dir({})", install.display())
         })?;
     }
     Ok(())
 }
 
-fn update(browser: BrowserType, install: PathBuf) -> Result<(), Whatever> {
-    let (install, back) = get_install_back(browser, install)?;
-
+fn update(browser: &BrowserType, install: &Path, back: &Path) -> Result<(), Whatever> {
     if back.exists() {
-        fs::remove_dir_all(&back).with_whatever_context(|_| {
+        fs::remove_dir_all(back).with_whatever_context(|_| {
             format!("Couldn't remove the backup dir({})", back.display())
         })?;
     }
 
     if install.exists() {
-        fs::rename(&install, &back).with_whatever_context(|_| {
+        fs::rename(install, back).with_whatever_context(|_| {
             format!("Couldn't backup the install dir({})", install.display())
         })?;
     }
 
     let install = if let Some(parent) = install.parent() {
-        parent.to_path_buf()
+        parent
     } else {
         install
     };
 
     if !install.exists() {
-        fs::create_dir_all(&install).with_whatever_context(|_| {
+        fs::create_dir_all(install).with_whatever_context(|_| {
             format!("Couldn't create the install dir({})", install.display())
         })?;
     }
@@ -147,7 +175,7 @@ fn update(browser: BrowserType, install: PathBuf) -> Result<(), Whatever> {
 }
 
 fn get_install_back(
-    browser: BrowserType,
+    browser: &BrowserType,
     install: PathBuf,
 ) -> Result<(PathBuf, PathBuf), Whatever> {
     ensure_whatever!(
