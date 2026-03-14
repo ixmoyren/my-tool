@@ -11,8 +11,9 @@ path = "main.rs"
 [dependencies]
 clap = { workspace = true }
 env_logger = { workspace = true }
+indicatif = { version = "0.18.4", default-features = false, features = ["unicode-segmentation", "unicode-width", "rayon"] }
 log = { workspace = true }
-reqwest = { workspace = true }
-tar = "0.4"
 lzma-rust2 = "0.16.2"
+reqwest = { workspace = true }
 snafu = { workspace = true }
+tar = "0.4"

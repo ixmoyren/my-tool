@@ -1,10 +1,12 @@
 use clap::{Parser, ValueEnum};
 use env_logger::{Builder, Target};
+use indicatif::{ProgressBar, ProgressStyle};
 use lzma_rust2::XzReader;
 use reqwest::blocking::Client;
 use snafu::{ResultExt, Whatever, ensure_whatever};
 use std::{
-    fs,
+    fs, io,
+    io::Read,
     path::{Path, PathBuf},
 };
 use tar::Archive;
@@ -65,12 +67,37 @@ impl BrowserType {
 
     pub fn back_dir(&self) -> &'static str {
         match self {
-            Self::Firefox => "firefox_back",
-            Self::Zen => "zen_back",
+            Self::Firefox => "firefox-back",
+            Self::Zen => "zen-back",
         }
     }
 }
+pub struct ProgressReader<R> {
+    inner: R,
+    progress: ProgressBar,
+}
 
+impl<R> ProgressReader<R>
+where
+    R: Read,
+{
+    pub fn new(inner: R, progress: ProgressBar) -> Self {
+        Self { inner, progress }
+    }
+}
+
+impl<R> Read for ProgressReader<R>
+where
+    R: Read,
+{
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let n = self.inner.read(buf)?;
+        if n > 0 {
+            self.progress.inc(n as u64);
+        }
+        Ok(n)
+    }
+}
 fn main() {
     let mut builder = Builder::from_default_env();
     builder.target(Target::Stdout);
@@ -158,15 +185,37 @@ fn update(browser: &BrowserType, install: &Path, back: &Path) -> Result<(), What
         .get(browser.url())
         .send()
         .with_whatever_context(|_| format!("Couldn't get the browser({})", browser.url()))?;
+
     ensure_whatever!(
         response.status().is_success(),
         "Failed to download the browser, status code is {}",
         response.status()
     );
 
+    let total_size = response
+        .headers()
+        .get(reqwest::header::CONTENT_LENGTH)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.parse::<u64>().ok());
+
+    let pb = if let Some(size) = total_size {
+        ProgressBar::new(size)
+    } else {
+        ProgressBar::new_spinner()
+    };
+    pb.set_style(
+        ProgressStyle::default_bar()
+            .template("{msg}\n{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({eta})")
+            .unwrap()
+            .progress_chars("#>-"),
+    );
+    pb.set_message(format!("Downloading & extracting {}", browser.url()));
+
     let lzma_reader = XzReader::new(response, true);
 
-    let mut archive = Archive::new(lzma_reader);
+    let reader = ProgressReader::new(lzma_reader, pb.clone());
+
+    let mut archive = Archive::new(reader);
     archive
         .unpack(install)
         .with_whatever_context(|_| "Couldn't unpack the archive file")?;
